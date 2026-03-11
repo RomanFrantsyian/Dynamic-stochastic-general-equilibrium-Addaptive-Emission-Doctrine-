@@ -1,0 +1,4 @@
+# AED Gradual scenario - phased transition
+
+scenario_mode: 'AED_GRADUAL'
+# Parameters transition over time (see mechanisms/scenarios.py)
