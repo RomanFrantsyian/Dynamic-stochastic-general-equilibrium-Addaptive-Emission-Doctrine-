@@ -1,0 +1,6 @@
+# Baseline scenario - traditional monetary policy
+
+scenario_mode: 'BASELINE'
+emission_coverage_ratio: 0.0
+tax_rate: 0.35
+key_interest_rate: 0.05

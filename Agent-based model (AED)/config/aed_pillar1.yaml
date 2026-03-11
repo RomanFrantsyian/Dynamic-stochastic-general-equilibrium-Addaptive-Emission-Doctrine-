@@ -1,0 +1,7 @@
+# AED Pillar 1 scenario - debt restructuring only
+
+scenario_mode: 'AED_PILLAR1'
+emission_coverage_ratio: 0.75
+tax_rate: 0.35
+echo_royalty_enabled: false
+social_emission_enabled: false
