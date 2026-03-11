@@ -1,8 +1,0 @@
-# AED Full scenario overrides
-
-scenario_mode: 'AED_FULL'
-emission_coverage_ratio: 0.75
-tax_rate: 0.0
-state_seigniorage_share: 0.10
-echo_royalty_enabled: true
-social_emission_enabled: true
