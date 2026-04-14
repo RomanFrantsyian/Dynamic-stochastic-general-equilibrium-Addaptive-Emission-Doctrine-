@@ -814,20 +814,6 @@ Modern industrial technologies operate via subscription/cloud access. License ke
 
 **Sanction:** If implementing country's CB blocks 25% transfer, smart contract automatically deactivates technology. Factories halt, deflationary vacuum vanishes, emission becomes impossible.
 
-**Table 4: TEA Protocol Transaction Flow**
-
-| Step | Action | Actor | Location | Verification |
-|------|--------|-------|----------|--------------|
-| 1 | Technology implementation | Argentine Factory | Argentina | Local audit |
-| 2 | Deflation measurement | Central Bank Argentina | Argentina | Market data |
-| 3 | 75% emission | Central Bank Argentina | Argentina | Debt annihilation |
-| 4 | DOC generation | Central Bank Argentina | Blockchain | Cryptographic |
-| 5 | DOC transmission | Clearing Gateway | International | Cross-border registry |
-| 6 | DOC verification | U.S. Federal Reserve | USA | Patent registry |
-| 7 | 25% emission | U.S. Federal Reserve | USA | Innovator credit |
-
----
-
 ## 6. Real-World Applications
 
 ### 6.1 Application: Housing Crisis Resolution
@@ -1545,8 +1531,7 @@ Eventual pilot programs should be designed with rigorous evaluation frameworks:
 2. Role of complementary institutions (education, infrastructure)
 3. Interaction with climate change policies
 4. Application to developing economies
-5. Digital currency integration (CBDC + AED)
-6. Coordination with space economy and resource abundance
+5. Coordination with space economy and resource abundance
 
 ---
 
