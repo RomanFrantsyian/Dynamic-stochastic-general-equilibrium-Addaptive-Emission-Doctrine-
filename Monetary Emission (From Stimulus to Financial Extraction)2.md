@@ -1497,41 +1497,12 @@ Our framework focuses on large economies. Small open economies face additional c
 - Foreign debt denominated in non-AED currencies
 - Vulnerability to speculative attacks during transition
 
-**Financial Sector Modeling:**
-We treat banks as passive intermediaries. Endogenizing banking sector responses would enrich analysis:
-- New financial instruments (emission-backed securities?)
-- Risk management under deflation
-- Bank profitability without interest spreads
-- Shadow banking evolution
-
-**Computational Agent-Based Modeling:**
-Complex adaptive systems approaches could simulate AED dynamics:
-- Heterogeneous agents with bounded rationality
-- Emergent phenomena not captured in analytical models
-- Network effects in technology adoption
-- Feedback loops and non-linear dynamics
-
 **Empirical Testing:**
 Eventual pilot programs should be designed with rigorous evaluation frameworks:
 - Randomized controlled trials where feasible (different regions)
 - Difference-in-differences for observational data
 - Synthetic control methods for policy evaluation
 - Long-term tracking (20+ years) for full effects
-
-**Areas for Empirical Investigation:**
-1. Firm response to debt restructuring incentives
-2. Consumer spending patterns under deflation
-3. Innovation rates and quality under AED vs. status quo
-4. Labor market dynamics and wage adjustment speed
-5. Housing market response to speculation removal
-6. International capital flows during transition
-
-**Theoretical Extensions:**
-1. Optimal transition speed (shock therapy vs. gradualism)
-2. Role of complementary institutions (education, infrastructure)
-3. Interaction with climate change policies
-4. Application to developing economies
-5. Coordination with space economy and resource abundance
 
 ---
 
