@@ -537,25 +537,6 @@ recipients — but the distribution mechanism demonstrated that near-simultaneou
 mass distribution of newly created monetary value is operationally feasible
 using existing infrastructure.
 
-#### Central Bank Digital Currency Infrastructure
-
-Multiple central banks (China's PBOC, the Bahamas' Sand Dollar, the ECB's
-digital euro initiative) are actively developing CBDC infrastructure that
-enables direct central bank to end-user transfers with settlement finality
-in seconds. The PBOC's digital yuan has been distributed in lottery-style
-programs to millions of citizens simultaneously. This infrastructure, once
-mature, provides the technical foundation for AED's simultaneous emission
-distribution without relying on financial intermediaries.
-
-#### Blockchain Batch Settlement
-
-The TEA Protocol's smart contract implementation (Section 5.2.2) enables
-batch settlement: all eligible emission claims verified within a period are
-processed as a single atomic transaction, ensuring all recipients receive their
-allocation at the same block timestamp. This is technically simultaneous in
-the relevant economic sense — no participant has a price-movement advantage
-over any other participant within the same settlement batch.
-
 ### What the Null Gets Right
 
 True mathematical simultaneity is impossible in a distributed system with
