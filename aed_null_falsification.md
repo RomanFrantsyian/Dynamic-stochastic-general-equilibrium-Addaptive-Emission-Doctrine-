@@ -537,6 +537,19 @@ recipients — but the distribution mechanism demonstrated that near-simultaneou
 mass distribution of newly created monetary value is operationally feasible
 using existing infrastructure.
 
+#### Dividend payment infrastructure
+
+When a corporation declares a quarterly dividend, every shareholder of record on the declared date receives payment on the same payment date — millions of investors, across thousands of brokerages, settled through existing clearing infrastructure within a single business day. No shareholder has a price-movement advantage over any other because no one receives their dividend while others are still waiting for theirs under conditions where markets are open and the dividend is already publicly announced. Corporations have operated this way for over a century without requiring new technology. AED's emission distribution to verified participants is structurally identical: a declared amount, a record date, a payment date, existing clearing rails.
+
+#### Social Security and government transfer payments
+
+The Social Security Administration disburses monthly payments to over 70 million Americans on a single payment date, using the existing ACH network and banking infrastructure that predates the internet. Recipients in Alaska and Florida receive their payment in the same overnight processing batch. The distribution window is not days — it is a single business day. If a payment system designed in the 1960s can achieve this at that scale, the AED emission mechanism requires no institutional innovation whatsoever.
+
+#### Payroll systems
+
+Every major employer in a developed economy runs payroll on a fixed date, transferring wages to thousands or tens of thousands of employees simultaneously through standard bank clearing. The employees do not receive wages sequentially based on proximity to the payroll department. The infrastructure that makes this routine for private employers is available to a central bank without modification.
+
+
 ### What the Null Gets Right
 
 True mathematical simultaneity is impossible in a distributed system with
