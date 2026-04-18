@@ -1152,28 +1152,41 @@ def fig_sensitivity():
 
     # ── (A) Sensitivity: Cantillon extraction rate τ ───────────────────
     ax = axes[0]
-    tau_range = np.linspace(0, 0.9, 50)
-    var_y_std = []
-    labour_share_final = []
+    tau_range = np.linspace(0.0, 0.9, 60)
+    var_y_bp2 = []
+    labour_share_level = []
+    stable_tau = []
 
     for tau_val in tau_range:
         p_tmp = DSGEParams()
         p_tmp.tau_can = tau_val
         m_tmp = NKDSGEModel(p_tmp, regime='standard')
+        rho = np.max(np.abs(np.linalg.eigvals(m_tmp.A)))
+        stable_tau.append(rho < 0.999)
         X_tmp, _ = m_tmp.simulate(seed=0)
-        var_y_std.append(np.var(X_tmp[0]) * 1e4)
-        labour_share_final.append(X_tmp[7, -1])
+        # Use post-burn-in moments for cleaner sensitivity metrics.
+        y_bp = X_tmp[0, 40:] * 100.0
+        var_y_bp2.append(np.var(y_bp))
+        # Convert labour-share deviation to an index level around 1.
+        labour_share_level.append(1.0 + np.median(X_tmp[7, -40:]))
 
     ax2 = ax.twinx()
-    ax.plot(tau_range, var_y_std,          color=C['std'],  lw=2,
-            label='Output gap variance')
-    ax2.plot(tau_range, labour_share_final, color=C['aed'],  lw=2, ls='--',
-             label='Labour share (final)')
+    tau_arr = np.array(tau_range)
+    var_y_bp2 = np.array(var_y_bp2, dtype=float)
+    labour_share_level = np.array(labour_share_level, dtype=float)
+    stable_tau = np.array(stable_tau, dtype=bool)
+    var_y_bp2[~stable_tau] = np.nan
+    labour_share_level[~stable_tau] = np.nan
+
+    ax.plot(tau_arr, var_y_bp2, color=C['std'], lw=2,
+            label='Output gap variance (bp^2)')
+    ax2.plot(tau_arr, labour_share_level, color=C['aed'], lw=2, ls='--',
+             label='Labour-share index (tail median)')
 
     ax.axvline(p.tau_can, color='k', lw=0.8, ls=':', label=f'Baseline τ={p.tau_can}')
     ax.set_xlabel('Cantillon Extraction Rate $\\tau$')
-    ax.set_ylabel('Output Gap Variance ($\\times 10^{-4}$)', color=C['std'])
-    ax2.set_ylabel('Labour Share', color=C['aed'])
+    ax.set_ylabel('Output Gap Variance (bp$^2$)', color=C['std'])
+    ax2.set_ylabel('Labour-Share Index', color=C['aed'])
     ax.set_title('(A) Sensitivity to Cantillon\nExtraction Rate', fontsize=9)
     lines, labs = ax.get_legend_handles_labels()
     lines2, labs2 = ax2.get_legend_handles_labels()
@@ -1181,27 +1194,38 @@ def fig_sensitivity():
 
     # ── (B) Sensitivity: Calvo price stickiness θ ─────────────────────
     ax = axes[1]
-    theta_range = np.linspace(0.3, 0.95, 50)
+    theta_range = np.linspace(0.3, 0.95, 60)
     kappa_vals = []
-    var_pi_vals = []
+    var_pi_bp2 = []
+    stable_theta = []
 
     for theta_val in theta_range:
         p_tmp = DSGEParams(); p_tmp.theta = theta_val
         m_tmp = NKDSGEModel(p_tmp, regime='standard')
+        rho = np.max(np.abs(np.linalg.eigvals(m_tmp.A)))
+        stable_theta.append(rho < 0.999)
         kappa_vals.append(m_tmp.kappa * 1000)   # scale for visibility
         X_tmp, _ = m_tmp.simulate(seed=0)
-        var_pi_vals.append(np.var(X_tmp[1]) * 1e6)
+        pi_bp = X_tmp[1, 40:] * 40000.0  # quarterly decimal -> annualised bp
+        var_pi_bp2.append(np.var(pi_bp))
 
     ax2 = ax.twinx()
-    ax.plot(theta_range, kappa_vals,   color=C['std'],  lw=2,
+    theta_arr = np.array(theta_range)
+    kappa_vals = np.array(kappa_vals, dtype=float)
+    var_pi_bp2 = np.array(var_pi_bp2, dtype=float)
+    stable_theta = np.array(stable_theta, dtype=bool)
+    kappa_vals[~stable_theta] = np.nan
+    var_pi_bp2[~stable_theta] = np.nan
+
+    ax.plot(theta_arr, kappa_vals, color=C['std'], lw=2,
             label='NKPC slope κ ($×10^{-3}$)')
-    ax2.plot(theta_range, var_pi_vals, color=C['shock'], lw=2, ls='--',
-             label='Inflation variance')
+    ax2.plot(theta_arr, var_pi_bp2, color=C['shock'], lw=2, ls='--',
+             label='Inflation variance (bp$^2$)')
 
     ax.axvline(p.theta, color='k', lw=0.8, ls=':', label=f'Baseline θ={p.theta}')
     ax.set_xlabel('Calvo Price Stickiness $\\theta$')
     ax.set_ylabel('NKPC Slope κ ($\\times 10^{-3}$)', color=C['std'])
-    ax2.set_ylabel('Inflation Variance ($\\times 10^{-6}$)', color=C['shock'])
+    ax2.set_ylabel('Inflation Variance (bp$^2$)', color=C['shock'])
     ax.set_title('(B) Sensitivity to Price\nStickiness', fontsize=9)
     lines, labs = ax.get_legend_handles_labels()
     lines2, labs2 = ax2.get_legend_handles_labels()
@@ -1209,10 +1233,10 @@ def fig_sensitivity():
 
     # ── (C) Taylor rule coefficients: policy frontier ──────────────────
     ax = axes[2]
-    phi_pi_range = np.linspace(1.01, 3.5, 30)
-    phi_y_range  = np.linspace(0.0,  1.0, 30)
+    phi_pi_range = np.linspace(0.5, 4.0, 60)
+    phi_y_range  = np.linspace(0.0,  2.0, 60)
     PP, PY = np.meshgrid(phi_pi_range, phi_y_range)
-    stability_map = np.zeros_like(PP)
+    rho_map = np.zeros_like(PP)
 
     for i in range(PP.shape[0]):
         for j in range(PP.shape[1]):
@@ -1220,13 +1244,13 @@ def fig_sensitivity():
             p_tmp.phi_pi = PP[i,j]
             p_tmp.phi_y  = PY[i,j]
             m_tmp = NKDSGEModel(p_tmp, regime='standard')
-            eigvals = np.abs(np.linalg.eigvals(m_tmp.A))
-            stability_map[i, j] = 1.0 if np.all(eigvals < 1.0) else 0.0
+            rho_map[i, j] = np.max(np.abs(np.linalg.eigvals(m_tmp.A)))
 
-    cs = ax.contourf(PP, PY, stability_map,
-                     levels=[-0.5, 0.5, 1.5],
-                     colors=['#FFCDD2', '#C8E6C9'], alpha=0.8)
-    ax.contour(PP, PY, stability_map, levels=[0.5], colors=['k'], linewidths=1)
+    stable_mask = rho_map < 1.0
+    ax.contourf(PP, PY, stable_mask.astype(float),
+                levels=[-0.5, 0.5, 1.5],
+                colors=['#FFCDD2', '#C8E6C9'], alpha=0.8)
+    ax.contour(PP, PY, rho_map, levels=[1.0], colors=['k'], linewidths=1)
     ax.plot(p.phi_pi, p.phi_y, 'k*', ms=12, label=f'Baseline ({p.phi_pi}, {p.phi_y})')
     ax.set_xlabel('Taylor Inflation Response $\\phi_\\pi$')
     ax.set_ylabel('Taylor Output Response $\\phi_y$')
