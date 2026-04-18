@@ -1408,10 +1408,10 @@ def main():
     print("  Done. 4 meso-level figures + model code saved.")
     print("=" * 70)
 
-    return ['/mnt/user-data/outputs/figM1_zmc_problem.png',
-            '/mnt/user-data/outputs/figM2_cantillon_energy.png',
-            '/mnt/user-data/outputs/figM3_zmc_analytics.png',
-            '/mnt/user-data/outputs/figM4_transition_dynamics.png']
+    return ['/choice/user-data/outputs/figM1_zmc_problem.png',
+            '/choice/user-data/outputs/figM2_cantillon_energy.png',
+            '/choice/user-data/outputs/figM3_zmc_analytics.png',
+            '/choice/user-data/outputs/figM4_transition_dynamics.png']
 
 
 if __name__ == '__main__':
