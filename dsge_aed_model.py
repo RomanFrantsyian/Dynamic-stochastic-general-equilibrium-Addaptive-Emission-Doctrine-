@@ -1204,7 +1204,7 @@ def main():
     ]
 
     import os
-    out_dir = '/mnt/user-data/outputs'
+    out_dir = 'Your choice where to save'
     os.makedirs(out_dir, exist_ok=True)
 
     saved = []
