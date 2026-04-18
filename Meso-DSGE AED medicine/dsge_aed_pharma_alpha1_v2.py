@@ -1442,7 +1442,7 @@ def fig_sensitivity_pharma():
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
     import os
-    out_dir = '/mnt/user-data/outputs'
+    out_dir = '/choice/user-data/outputs'
     os.makedirs(out_dir, exist_ok=True)
 
     print("=" * 70)
