@@ -117,6 +117,8 @@ class DSGEParams:
     # ── Debt & Fisher Dynamics ────────────────────────────────────────────
     d0      = 1.50      # Initial debt/GDP ratio
     r_debt  = 0.015     # Average debt service rate (quarterly)
+    ann_rate_aed = 0.015  # Quarterly debt annihilation cap under AED
+    seig_relief_aed = 0.004  # Quarterly seigniorage debt-relief cap
 
     # ── Shock Processes ───────────────────────────────────────────────────
     rho_a   = 0.90      # Productivity shock persistence
@@ -349,22 +351,35 @@ class AEDMasterFormula:
             Q[t]    = Q[t-1] * np.exp(g + a_shock * 0.8)
 
             dQ = Q[t] - Q[t-1]
+            real_growth = max((Q[t] / max(Q[t-1], 1e-9)) - 1.0, -0.95)
 
             # ── Standard regime (2% inflation target + QE) ─────────────
             inflation_std = p.pi_star + 0.3 * a_shock
             P[t] = P[t-1] * (1 + inflation_std)
-            D[t] = D[t-1] * (1 + p.r_debt - inflation_std) + 0.005
+            primary_def_std = 0.0015
+            D_nom_std_next = D[t-1] * (1 + p.r_debt - inflation_std) + primary_def_std
+            D[t] = max(D_nom_std_next / (1 + inflation_std + real_growth), 0.05)
 
             # Real wage grows less than productivity (Cantillon)
             w_real[t] = w_real[t-1] * np.exp((1 - tau[t]) * g + a_shock * 0.3)
 
             # ── AED regime ─────────────────────────────────────────────
-            D_annihilated = max(0.0, -dQ * P_aed[t-1] / p.V * 0.5)
+            growth_share = max(0.0, dQ / max(Q[t-1], 1e-9))
+            ann_rate_t = min(p.ann_rate_aed, growth_share * 0.8)
+            D_annihilated = ann_rate_t * D_aed[t-1]
+            seig_relief = min(p.seig_relief_aed, growth_share * 0.25)
             E = self.emission(P_aed[t-1], dQ, p.V, D_annihilated)
 
             pi_aed = p.kappa_aed + 0.01 * rng.standard_normal()
             P_aed[t] = P_aed[t-1] * (1 + pi_aed)
-            D_aed[t] = D_aed[t-1] * (1 + p.r_debt - pi_aed) - D_annihilated + 0.003
+            primary_def_aed = 0.0005
+            D_nom_aed_next = (
+                D_aed[t-1] * (1 + p.r_debt - pi_aed)
+                - D_annihilated
+                - seig_relief
+                + primary_def_aed
+            )
+            D_aed[t] = max(D_nom_aed_next / (1 + pi_aed + real_growth), 0.02)
 
             # Real wage tracks productivity (AED distributes gains)
             w_real_aed[t] = w_real_aed[t-1] * np.exp(g + a_shock * 0.9)
@@ -404,6 +419,43 @@ def _format_pct_axis(ax, axis='y'):
         ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
     else:
         ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+
+
+def simulate_common_gini_path(
+    t_y, debt_path, inclusion_path, seed=55, gini0=0.39, gini_lo=0.25, gini_hi=0.55
+):
+    """Shared reduced-form inequality module used across model files."""
+    rng = np.random.default_rng(seed)
+    gini = np.zeros_like(t_y, dtype=float)
+    gini[0] = gini0
+    debt0 = max(debt_path[0], 1e-6)
+    for i in range(1, len(t_y)):
+        dt = t_y[i] - t_y[i - 1]
+        debt_pressure = 0.008 * ((debt_path[i] - debt0) / debt0) * dt
+        # Keep AED relief meaningful but not so strong that paths pin to bounds.
+        inclusion_relief = 0.010 * np.clip(inclusion_path[i], 0.0, 1.0) * dt
+        trend = 0.0008 * dt
+        mean_reversion = 0.035 * (0.34 - gini[i - 1]) * dt
+        noise = rng.normal(0.0, 0.0006)
+        proposal = (
+            gini[i - 1]
+            + trend
+            + mean_reversion
+            + debt_pressure
+            - inclusion_relief
+            + noise
+        )
+
+        # Soft-bound dynamics: bounce off limits instead of sticking to them.
+        if proposal < gini_lo:
+            gini[i] = gini_lo + 0.35 * (gini_lo - proposal) + abs(noise) * 0.20
+        elif proposal > gini_hi:
+            gini[i] = gini_hi - 0.35 * (proposal - gini_hi) - abs(noise) * 0.20
+        else:
+            gini[i] = proposal
+
+        gini[i] = np.clip(gini[i], gini_lo, gini_hi)
+    return gini
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -726,6 +778,7 @@ def fig_cantillon():
     T = 160   # 40 years quarterly
     t = np.arange(T)
     rng = np.random.default_rng(42)
+    paths = AEDMasterFormula(p).simulate_path(T=T, seed=42)
 
     # ── (A) Sequential money injection: price path by proximity ──────────
     ax = axes[0, 0]
@@ -791,17 +844,26 @@ def fig_cantillon():
 
     # ── (C) Gini coefficient dynamics ──────────────────────────────────
     ax = axes[1, 0]
-    # Approximate Gini path: increases with QE doses
     qe_shocks_t = [80, 90, 100, 110, 120]  # quarters with QE
-    gini_std = np.ones(T) * 0.35
-    gini_aed = np.ones(T) * 0.35
-    for t2 in range(1, T):
-        cantillon_push = 0.002 if t2 in qe_shocks_t else 0
-        gini_std[t2] = gini_std[t2-1] + cantillon_push + 0.0003 + \
-                       0.0002*rng.standard_normal()
-        gini_aed[t2] = gini_aed[t2-1] + 0.0001 - 0.0001*rng.standard_normal()
-    gini_std = np.clip(gini_std, 0.30, 0.55)
-    gini_aed = np.clip(gini_aed, 0.30, 0.45)
+    t_years = t / 4
+    debt_std = (paths['D_std'] / paths['D_std'][0]) * p.d0
+    debt_aed = (paths['D_aed'] / paths['D_aed'][0]) * p.d0
+    incl_std = np.zeros(T)
+    incl_std[qe_shocks_t] = 0.05
+    # Relief decays over time so inequality keeps evolving instead of pinning.
+    relief_decay = np.exp(-np.arange(T) / 180.0)
+    incl_aed = np.clip(
+        0.02
+        + 0.04 * np.clip(
+            (paths['labour_share_aed'] - paths['labour_share']) / 0.20,
+            0.0,
+            1.0
+        ) * relief_decay,
+        0.0, 1.0
+    )
+
+    gini_std = simulate_common_gini_path(t_years, debt_std, incl_std, seed=71)
+    gini_aed = simulate_common_gini_path(t_years, debt_aed, incl_aed, seed=72)
 
     ax.plot(t, gini_std, color=C['std'], lw=2, label='Standard')
     ax.plot(t, gini_aed, color=C['aed'], lw=2, ls='--', label='AED')
@@ -814,6 +876,7 @@ def fig_cantillon():
     ax.set_title('(C) Wealth Gini Coefficient Dynamics\n(Estimated from QE Distributional Model)',
                  fontsize=9)
     ax.set_xlabel('Quarters'); ax.set_ylabel('Gini Coefficient')
+    ax.set_ylim(0.28, 0.45)
     ax.legend(frameon=False, fontsize=8)
 
     # ── (D) AED distribution: 75/25 and 70/20/10 ───────────────────────
@@ -1204,7 +1267,7 @@ def main():
     ]
 
     import os
-    out_dir = 'Your choice where to save'
+    out_dir = r'D:\Fiscal'
     os.makedirs(out_dir, exist_ok=True)
 
     saved = []
