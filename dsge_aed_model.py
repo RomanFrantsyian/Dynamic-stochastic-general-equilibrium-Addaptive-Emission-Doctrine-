@@ -129,6 +129,17 @@ class DSGEParams:
     sig_m   = 0.002     # Monetary shock std dev
     sig_can = 0.003     # Cantillon redistribution shock std dev
 
+    # ── QE / Distributional Event Parameters ───────────────────────────────
+    qe_mode = 'historical'  # 'historical', 'rule', 'off'
+    qe_dates = [80, 90, 100, 110, 120]  # quarter indices used in historical mode
+    qe_amp_base = 0.0040
+    qe_half_life = 3.0
+    qe_persistence = 10
+    qe_rule_output_weight = 2.0
+    qe_rule_inflation_weight = 1.5
+    qe_rule_debt_weight = 1.2
+    qe_rule_threshold = 0.60
+
     # ── Simulation ────────────────────────────────────────────────────────
     T       = 200       # Periods (50 years quarterly)
     T_irf   = 40        # IRF horizon
@@ -456,6 +467,77 @@ def simulate_common_gini_path(
 
         gini[i] = np.clip(gini[i], gini_lo, gini_hi)
     return gini
+
+
+def build_qe_impulse_series(T, params: DSGEParams, debt_path, y_gap=None, pi_path=None):
+    """Create QE impulse series and event dates using configured mode."""
+    impulses = np.zeros(T, dtype=float)
+    event_dates = []
+
+    if params.qe_mode == 'off':
+        return impulses, event_dates
+
+    if params.qe_mode == 'historical':
+        event_dates = [int(t) for t in params.qe_dates if 0 <= int(t) < T]
+    else:
+        y_gap = np.zeros(T) if y_gap is None else y_gap
+        pi_path = np.zeros(T) if pi_path is None else pi_path
+        debt_norm = np.maximum(debt_path / max(debt_path[0], 1e-9) - 1.0, 0.0)
+        output_stress = np.maximum(-y_gap, 0.0)
+        inflation_gap = np.maximum(params.pi_star - pi_path, 0.0)
+        signal = (
+            params.qe_rule_output_weight * output_stress
+            + params.qe_rule_inflation_weight * inflation_gap
+            + params.qe_rule_debt_weight * debt_norm
+        )
+        intensity = 1.0 / (1.0 + np.exp(-6.0 * (signal - 0.1)))
+        active = intensity > params.qe_rule_threshold
+        event_dates = [t for t in range(1, T) if active[t] and not active[t - 1]]
+        if len(event_dates) == 0 and np.max(intensity) > 0.50:
+            event_dates = [int(np.argmax(intensity))]
+
+    decay = np.exp(-np.arange(params.qe_persistence) / max(params.qe_half_life, 1e-6))
+    for tq in event_dates:
+        for h in range(params.qe_persistence):
+            idx = tq + h
+            if idx < T:
+                impulses[idx] += params.qe_amp_base * decay[h]
+    return impulses, event_dates
+
+
+def simulate_distributional_gini_paths(paths, params: DSGEParams, T, y_gap_std=None, pi_std=None):
+    """Reusable distributional block for Figure 6 and other diagnostics."""
+    t = np.arange(T)
+    t_years = t / 4
+    debt_std = (paths['D_std'] / paths['D_std'][0]) * params.d0
+    debt_aed = (paths['D_aed'] / paths['D_aed'][0]) * params.d0
+
+    incl_std = np.zeros(T)
+    relief_decay = np.exp(-np.arange(T) / 180.0)
+    incl_aed = np.clip(
+        0.02
+        + 0.04 * np.clip(
+            (paths['labour_share_aed'] - paths['labour_share']) / 0.20,
+            0.0,
+            1.0
+        ) * relief_decay,
+        0.0,
+        1.0
+    )
+
+    gini_std = simulate_common_gini_path(t_years, debt_std, incl_std, seed=71)
+    gini_aed = simulate_common_gini_path(t_years, debt_aed, incl_aed, seed=72)
+
+    qe_impulses, qe_dates = build_qe_impulse_series(
+        T, params, debt_std, y_gap=y_gap_std, pi_path=pi_std
+    )
+    gini_std = np.clip(gini_std + qe_impulses, 0.28, 0.55)
+
+    return {
+        'gini_std': gini_std,
+        'gini_aed': gini_aed,
+        'qe_dates': qe_dates,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -844,35 +926,23 @@ def fig_cantillon():
 
     # ── (C) Gini coefficient dynamics ──────────────────────────────────
     ax = axes[1, 0]
-    qe_shocks_t = [80, 90, 100, 110, 120]  # quarters with QE
-    t_years = t / 4
-    debt_std = (paths['D_std'] / paths['D_std'][0]) * p.d0
-    debt_aed = (paths['D_aed'] / paths['D_aed'][0]) * p.d0
-    incl_std = np.zeros(T)
-    incl_std[qe_shocks_t] = 0.05
-    # Relief decays over time so inequality keeps evolving instead of pinning.
-    relief_decay = np.exp(-np.arange(T) / 180.0)
-    incl_aed = np.clip(
-        0.02
-        + 0.04 * np.clip(
-            (paths['labour_share_aed'] - paths['labour_share']) / 0.20,
-            0.0,
-            1.0
-        ) * relief_decay,
-        0.0, 1.0
+    std_states, _ = NKDSGEModel(p, regime='standard').simulate(T=T, seed=42)
+    gini_block = simulate_distributional_gini_paths(
+        paths, p, T, y_gap_std=std_states[0], pi_std=std_states[1]
     )
-
-    gini_std = simulate_common_gini_path(t_years, debt_std, incl_std, seed=71)
-    gini_aed = simulate_common_gini_path(t_years, debt_aed, incl_aed, seed=72)
+    gini_std = gini_block['gini_std']
+    gini_aed = gini_block['gini_aed']
+    qe_shocks_t = gini_block['qe_dates']
 
     ax.plot(t, gini_std, color=C['std'], lw=2, label='Standard')
     ax.plot(t, gini_aed, color=C['aed'], lw=2, ls='--', label='AED')
     for tq in qe_shocks_t:
         ax.axvline(tq, color=C['shock'], lw=0.8, ls=':', alpha=0.7)
-    ax.annotate('QE events', xy=(qe_shocks_t[0], 0.38),
-                xytext=(qe_shocks_t[0]-15, 0.36),
-                arrowprops=dict(arrowstyle='->', color=C['shock'], lw=0.9),
-                fontsize=7.5, color=C['shock'])
+    if len(qe_shocks_t) > 0:
+        ax.annotate('QE events', xy=(qe_shocks_t[0], 0.38),
+                    xytext=(max(qe_shocks_t[0]-15, 5), 0.36),
+                    arrowprops=dict(arrowstyle='->', color=C['shock'], lw=0.9),
+                    fontsize=7.5, color=C['shock'])
     ax.set_title('(C) Wealth Gini Coefficient Dynamics\n(Estimated from QE Distributional Model)',
                  fontsize=9)
     ax.set_xlabel('Quarters'); ax.set_ylabel('Gini Coefficient')
