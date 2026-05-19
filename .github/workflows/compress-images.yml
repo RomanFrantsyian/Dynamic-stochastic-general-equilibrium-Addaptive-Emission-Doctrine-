@@ -1,6 +1,6 @@
 name: Compress Images Direct
 on:
-  push:
+  pull_request:
     branches:
       - main
   workflow_dispatch:
