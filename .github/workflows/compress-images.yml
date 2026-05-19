@@ -1,28 +1,71 @@
-name: Compress All Images
+name: Compress All Images(WebP)
+
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
-    name: Compress and Commit All Images
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Dependencies
-        run: sudo apt-get install -y pngquant jpegoptim
-
-      - name: Compress PNGs
-        run: find . -name "*.png" -not -path "./.git/*" -exec pngquant --force --ext .png --quality=65-80 {} \;
-
-      - name: Compress JPEGs
-        run: find . \( -name "*.jpg" -o -name "*.jpeg" \) -not -path "./.git/*" -exec jpegoptim --max=80 {} \;
-
-      - name: Commit Compressed Images
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          python -m pip install --upgrade pip
+          pip install Pillow
+
+      - name: Convert PNGs to WebP Lossless
+        run: |
+          python3 << 'EOF'
+          from PIL import Image
+          import pathlib
+          import os
+
+          for path in pathlib.Path('.').rglob('*.png'):
+
+              if any(part in ['.git', '.venv', 'node_modules'] for part in path.parts):
+                  continue
+
+              try:
+                  img = Image.open(path)
+
+                  webp_path = path.with_suffix('.webp')
+
+                  img.save(
+                      webp_path,
+                      'WEBP',
+                      lossless=True,
+                      method=6
+                  )
+
+                  os.remove(path)
+
+                  print(f"Converted: {path} -> {webp_path}")
+
+              except Exception as e:
+                  print(f"Failed: {path}: {e}")
+          EOF
+
+      - name: Commit Changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
-          git diff --staged --quiet || git commit -m "Compress all existing images"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Compress images to WebP"
+          fi
+
+      - name: Push Changes
+        run: |
+          git push origin HEAD:Compressed
