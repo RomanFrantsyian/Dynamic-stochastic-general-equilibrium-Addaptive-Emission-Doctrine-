@@ -1,18 +1,28 @@
-name: Compress Images Direct
+name: Compress All Images
 on:
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
+
 jobs:
   build:
-    name: Optimize and Commit Images
+    name: Compress and Commit All Images
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Optimize Images
-        uses: calibreapp/image-actions@1.1.0
-        with:
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Dependencies
+        run: npm install -g imagemin-cli imagemin-mozjpeg imagemin-pngquant imagemin-webp
+
+      - name: Compress Images
+        run: |
+          find . -type f \( -name "*.jpg" -o -name "*.jpeg" \) -exec imagemin {} --plugin=mozjpeg --out-dir=$(dirname {}) \;
+          find . -type f -name "*.png" -exec imagemin {} --plugin=pngquant --out-dir=$(dirname {}) \;
+          find . -type f -name "*.webp" -exec imagemin {} --plugin=webp --out-dir=$(dirname {}) \;
+
+      - name: Commit Compressed Images
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Compress all existing images"
+          git push
