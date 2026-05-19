@@ -11,13 +11,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Dependencies
-        run: npm install -g imagemin-cli imagemin-mozjpeg imagemin-pngquant imagemin-webp
+        run: sudo apt-get install -y pngquant jpegoptim
 
-      - name: Compress Images
-        run: |
-          find . -type f \( -name "*.jpg" -o -name "*.jpeg" \) -exec imagemin {} --plugin=mozjpeg --out-dir=$(dirname {}) \;
-          find . -type f -name "*.png" -exec imagemin {} --plugin=pngquant --out-dir=$(dirname {}) \;
-          find . -type f -name "*.webp" -exec imagemin {} --plugin=webp --out-dir=$(dirname {}) \;
+      - name: Compress PNGs
+        run: find . -name "*.png" -not -path "./.git/*" -exec pngquant --force --ext .png --quality=65-80 {} \;
+
+      - name: Compress JPEGs
+        run: find . \( -name "*.jpg" -o -name "*.jpeg" \) -not -path "./.git/*" -exec jpegoptim --max=80 {} \;
 
       - name: Commit Compressed Images
         run: |
