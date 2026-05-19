@@ -2,8 +2,8 @@ name: Compress Images
 on:
   push:
     branches:
-      - main # Change this if your default branch is 'master'
-  workflow_dispatch: # Allows you to run this manually whenever you want
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,5 +17,5 @@ jobs:
         uses: calibreapp/image-actions@main
         with:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          # Changing to false allows the action to commit the changes back to your repo
           compressOnly: false
+          pushBehavior: branch
