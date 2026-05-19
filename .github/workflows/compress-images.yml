@@ -17,5 +17,5 @@ jobs:
         uses: calibreapp/image-actions@main
         with:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          # Compress JPEG/PNG. For maximum compression, set compressOnly: false
-          compressOnly: true
+          # Changing to false allows the action to commit the changes back to your repo
+          compressOnly: false
